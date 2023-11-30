@@ -1,0 +1,6 @@
+# how to use:
+python3 get_CO3-contained_poscar_folder_abs_path_list <C_O_existed_poscar_folder_abs_path_list.npyのパス>
+
+
+# example:
+python3 get_CO3-contained_poscar_folder_abs_path_list.py /mnt/ssd_elecom_black_c2c/scripts_get_C_O_existed_poscar_folder_abs_path_list/C_O_existed_poscar_folder_abs_path_list.npy
