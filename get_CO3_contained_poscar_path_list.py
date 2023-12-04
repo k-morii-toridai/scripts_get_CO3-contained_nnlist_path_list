@@ -20,12 +20,11 @@ def flatten_func(list_2dim):
 
 
 def bool_CO3_contained_poscar(poscar_nnlist):
-    df_nnlist = nnlist2df(str(poscar_nnlist))
 
+    df_nnlist = nnlist2df(str(poscar_nnlist))
     # df_nnlistでcentral speciesがCのものに絞る
     df_nnlist_central_species_C = df_nnlist[df_nnlist['central species'] == 'C']
 
-    # さらに，炭酸イオンかどうかを判定するためにに，あるcentral atomのneighboring speciesがCとO３つの計４つでできているか確認したい
     # central atomの値を入力すれば，neighboring speciesのリストを返す関数()を作成
     def get_neighboring_species_list(central_atom_id, df=df_nnlist_central_species_C):
         """
@@ -34,7 +33,13 @@ def bool_CO3_contained_poscar(poscar_nnlist):
         Input: central atom column element In df_nnlist
      -> Output: All neighboring atom column element that Input(:elemnt) match central atom column element
 
-        param1: Input: central atom column element In df_nnlist
+        Parameters
+        --------------------
+            param1: Input: central atom column element In df_nnlist
+
+        Return
+        --------------------
+            list
         """
         # 左側の列から対応する行を選択し、右側の数値を取得
         # result = df_nnlist[df_nnlist['central atom'] == input_value]['neighboring atom'].values
@@ -54,29 +59,37 @@ def bool_CO3_contained_poscar(poscar_nnlist):
         else:
             return False
 
+    def get_neighboring_atom_id_list(central_atom_id, df=df_nnlist_central_species_C):
+        """
+        To get all central atoms of a cluster(:neighbors), Input a number of cluster center element number(:central atom)
+
+        Input: central atom column element In df_nnlist
+     -> Output: All neighboring_atom_id_list that Input(:elemnt) match central atom column element
+        Parameters
+        --------------------
+            param1: Input: central atom column element In df_nnlist
+        Return
+        --------------------
+            list
+        """
+        # 左側の列から対応する行を選択し、右側の数値を取得
+        # result = df_nnlist[df_nnlist['central atom'] == input_value]['neighboring atom'].values
+        neighboring_atom_id_list = df[df['central atom'] == central_atom_id]['neighboring atom'].tolist()
+
+        return neighboring_atom_id_list
+
+    # さらに，炭酸イオンかどうかを判定するためにに，あるcentral atomのneighboring speciesがCとO３つの計４つでできているか確認したい
     # df_nnlist_central_species_Cに対し，CO3がどうかを確認し，CO3である原子のid一覧を取得
     # まず，中心元素がCのid一覧(central atomの値の一覧)を取得
     central_species_C_id_list = df_nnlist_central_species_C['central atom'].unique()
     # その中で，match_num_C_O_3()を用いて，過不足なくCO3だけを含むものに絞る
     num_matched_central_species_C_id_list = [i for i in central_species_C_id_list if match_num_C_O_3(i)]
 
+    def match_species_num(list_=num_matched_central_species_C_id_list):
+        # 第一判定
+        return True if len(list_) > 0 else False
+
     def rm_duplicated_central_species_C_id(central_species_C_list=num_matched_central_species_C_id_list):
-
-        def get_neighboring_atom_id_list(central_atom_id, df=df_nnlist_central_species_C):
-            """
-            To get all central atoms of a cluster(:neighbors), Input a number of cluster center element number(:central atom)
-
-            Input: central atom column element In df_nnlist
-         -> Output: All neighboring atom column element that Input(:elemnt) match central atom column element
-
-            param1: Input: central atom column element In df_nnlist
-            """
-            # 左側の列から対応する行を選択し、右側の数値を取得
-            # result = df_nnlist[df_nnlist['central atom'] == input_value]['neighboring atom'].values
-            neighboring_atom_id_list = df[df['central atom'] == central_atom_id]['neighboring atom'].tolist()
-
-            return neighboring_atom_id_list
-
         # 中心がC，その周りにOが3つ存在する原子のid一覧をリスト化
         species_id_list = flatten_func(list(map(get_neighboring_atom_id_list, num_matched_central_species_C_id_list)))
         # 直上のspecies_id_listの重複削除してリスト化
@@ -85,8 +98,8 @@ def bool_CO3_contained_poscar(poscar_nnlist):
         for num in set_species_id_list:
             species_id_list.remove(num)
 
-        # species_id_listの要素数が0 -> Oの重複抽出なし -> すべてCO3の炭酸イオン（：C2O6でない）
-        if len(species_id_list) == 0:
+        # 第2判定
+        if len(species_id_list) == 0:  # species_id_listの要素数が0 -> Oの重複抽出なし -> すべてCO3の炭酸イオン（：C2O6でない）
             return True
         else:
             # central_atom_idをkey，そのneighboring atom idをvalueにして，CO3が塊まった形でデータ保持する
@@ -105,7 +118,11 @@ def bool_CO3_contained_poscar(poscar_nnlist):
 
             return True if len(CO3_matched_central_species_C_list) > 0 else False
 
-    return rm_duplicated_central_species_C_id()
+    # 第1判定
+    if match_species_num():
+        return rm_duplicated_central_species_C_id()  # 第2判定
+    else:
+        return False
 
 
 def iterdir_func(poscar_dir):
@@ -183,6 +200,6 @@ CO3_contained_poscar_folder_path_list = [Path(os.path.split(os.path.split(p)[0])
 CO3_contained_poscar_path_list = [Path(str(p) + '/POSCAR') for p in CO3_contained_poscar_folder_path_list if os.path.exists(Path(str(p) + '/POSCAR'))]
 
 # CO3を含むPOSCARファイルの親ディレクトリパスのリストを.npy形式で保存
-np.save(f'CO3_contained_poscar_folder_path_list_{args[1]}.npy', CO3_contained_poscar_folder_path_list)
+np.save(f'data_npy_made_by_two_filters/CO3_contained_poscar_folder_path_list_{args[1]}.npy', CO3_contained_poscar_folder_path_list)
 # CO3を含むPOSCARファイルのパスを.npy形式で保存
-np.save(f'CO3_contained_poscar_path_list_{args[1]}.npy', CO3_contained_poscar_path_list)
+np.save(f'data_npy_made_by_two_filters/CO3_contained_poscar_path_list_{args[1]}.npy', CO3_contained_poscar_path_list)
